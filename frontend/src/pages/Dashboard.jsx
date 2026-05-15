@@ -27,6 +27,7 @@ import {
   incidentMarkerIcons,
   createCustomMarkerIcon,
   searchLocationMarkerIcon,
+  resolveIncidentMarkerIconKey,
 } from "../lib/mapIcons";
 import { renderToString } from "react-dom/server";
 import incidentApi from "../services/api/incidentApi";
@@ -41,8 +42,9 @@ const STATUS_CLASS_NAME = Object.freeze({
 });
 
 const DANANG_CENTER = [16.0471, 108.2068];
-const DASHBOARD_REPORTS_CACHE_KEY = "dashboard-map-reports-cache-v1";
-const DASHBOARD_GEOCODE_CACHE_KEY = "dashboard-map-geocode-cache-v1";
+const DASHBOARD_REPORTS_CACHE_KEY = "dashboard-map-reports-cache-v2";
+const DASHBOARD_GEOCODE_CACHE_KEY = "dashboard-map-geocode-cache-v2";
+
 
 const normalizeTypeKey = (value = "") =>
   String(value)
@@ -476,16 +478,14 @@ const Dashboard = () => {
                   normalizeTypeKey(t.name) === normalizeTypeKey(incident.type),
               );
 
-              const getIconKey = (cat) => {
-                const normalized = normalizeTypeKey(cat);
-                if (normalized.includes("giao thong")) return "traffic";
-                if (normalized.includes("dien")) return "electric";
-                if (normalized.includes("cay xanh")) return "tree";
-                if (normalized.includes("cong trinh")) return "building";
-                return cat;
-              };
+              const markerIconKey = resolveIncidentMarkerIconKey({
+                typeName: incident.type,
+                iconKey: typeObj?.iconKey,
+              });
 
-              let mapIcon = incidentMarkerIcons[getIconKey(incident.type)];
+              let mapIcon = markerIconKey
+                ? incidentMarkerIcons[markerIconKey]
+                : null;
 
               if (!mapIcon) {
                 let svgString = `<svg class="map-marker__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6" fill="currentColor" /></svg>`;

@@ -100,7 +100,13 @@ export default function IncidentPopupContent({ incident, onDetail }) {
           ) : null}
         </div>
 
-        <div className="incident-popup-card__body">
+        <div 
+          className="incident-popup-card__body cursor-pointer hover:bg-gray-50/50 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDetail?.(incident);
+          }}
+        >
           <div className="incident-popup-card__header">
             <h3 className="incident-popup-card__title">{incident.title}</h3>
             <span className={getStatusClassName(incident.status)}>
@@ -112,17 +118,22 @@ export default function IncidentPopupContent({ incident, onDetail }) {
             {incident.description || "Chưa có mô tả chi tiết cho sự cố này."}
           </p>
 
-          <button
-            type="button"
-            className="mt-3 w-full flex items-center justify-center gap-2 rounded-lg bg-[#2563EB] py-2 text-xs font-bold text-white transition-colors hover:bg-[#1d4ed8]"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail?.(incident);
-            }}
-          >
-            <FileText size={14} />
-            <span>Xem chi tiết báo cáo</span>
-          </button>
+          <div className="incident-popup-card__meta">
+            <div className="incident-popup-card__meta-row">
+              <MapPin />
+              <span>{incident.location || "Chưa xác định"}</span>
+            </div>
+            
+            <div className="incident-popup-card__meta-row">
+              <CalendarDays />
+              <span>{incident.displayDate || "Không rõ"}</span>
+            </div>
+            
+            <div className="incident-popup-card__meta-row">
+              <CircleUserRound />
+              <span>{incident.reporterName || "Người dân phản ánh"}</span>
+            </div>
+          </div>
         </div>
       </div>
 

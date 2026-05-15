@@ -9,6 +9,7 @@ import {
   incidentMarkerIcons,
   createCustomMarkerIcon,
   searchLocationMarkerIcon,
+  resolveIncidentMarkerIconKey,
 } from "../lib/mapIcons";
 import { reportApi } from "../services/api/reportApi";
 import incidentApi from "../services/api/incidentApi";
@@ -30,8 +31,9 @@ const normalizeText = (value = "") =>
 const normalizeTypeKey = normalizeText;
 
 const DANANG_CENTER = [16.0471, 108.2068];
-const MAINTENANCE_REPORTS_CACHE_KEY = "maintenance-map-reports-cache-v1";
-const MAINTENANCE_GEOCODE_CACHE_KEY = "maintenance-map-geocode-cache-v1";
+const MAINTENANCE_REPORTS_CACHE_KEY = "maintenance-map-reports-cache-v2";
+const MAINTENANCE_GEOCODE_CACHE_KEY = "maintenance-map-geocode-cache-v2";
+
 
 const parseCoordinate = (value, min, max) => {
   const numericValue = Number(value);
@@ -287,6 +289,7 @@ const MaintenanceDashboard = () => {
   const { user } = useAuth();
   const [teamId, setTeamId] = useState("");
   const [teamLoading, setTeamLoading] = useState(false);
+  const [teamLookupDone, setTeamLookupDone] = useState(false);
 
   const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -304,6 +307,9 @@ const MaintenanceDashboard = () => {
     let isMounted = true;
     const fetchTeam = async () => {
       if (!user) return;
+      if (isMounted) {
+        setTeamLookupDone(false);
+      }
       setTeamLoading(true);
       try {
         const response = await maintenanceTeamApi.getTeams({
@@ -330,6 +336,7 @@ const MaintenanceDashboard = () => {
         if (isMounted) setTeamId("");
       } finally {
         if (isMounted) setTeamLoading(false);
+        if (isMounted) setTeamLookupDone(true);
       }
     };
 
@@ -415,21 +422,25 @@ const MaintenanceDashboard = () => {
 
   useEffect(() => {
     let isMounted = true;
-    const cacheKey =
-      isMaintenanceUser && assignedTeamId
-        ? `${MAINTENANCE_REPORTS_CACHE_KEY}-${assignedTeamId}`
-        : MAINTENANCE_REPORTS_CACHE_KEY;
+    const cacheKey = teamId
+      ? `${MAINTENANCE_REPORTS_CACHE_KEY}-${teamId}`
+      : MAINTENANCE_REPORTS_CACHE_KEY;
 
     const fetchReports = async () => {
       try {
-        let rawReports = [];
+        if (isMaintenanceUser && !teamLookupDone) {
+          return;
+        }
 
-        if (user?.role === "maintenance" && !teamId && !teamLoading) {
+        if (isMaintenanceUser && !teamId) {
           if (isMounted) {
             setReports([]);
+            setSearchMarker(null);
           }
           return;
         }
+
+        let rawReports = [];
 
         try {
           const mapResponse = await reportApi.getMapReports({
@@ -464,7 +475,7 @@ const MaintenanceDashboard = () => {
     return () => {
       isMounted = false;
     };
-  }, [assignedTeamId, isMaintenanceUser]);
+  }, [teamId, teamLoading, teamLookupDone, isMaintenanceUser]);
 
   // Dữ liệu đã được backend lọc theo assignedTeamId trong quá trình fetch (teamId)
   // nên không cần lọc lại ở client nữa, tránh lỗi mất marker do sai lệch format ID
@@ -570,16 +581,14 @@ const MaintenanceDashboard = () => {
                   normalizeTypeKey(t.name) === normalizeTypeKey(incident.type),
               );
 
-              const getIconKey = (cat) => {
-                const normalized = normalizeTypeKey(cat);
-                if (normalized.includes("giao thong")) return "traffic";
-                if (normalized.includes("dien")) return "electric";
-                if (normalized.includes("cay xanh")) return "tree";
-                if (normalized.includes("cong trinh")) return "building";
-                return cat;
-              };
+              const markerIconKey = resolveIncidentMarkerIconKey({
+                typeName: incident.type,
+                iconKey: typeObj?.iconKey,
+              });
 
-              let mapIcon = incidentMarkerIcons[getIconKey(incident.type)];
+              let mapIcon = markerIconKey
+                ? incidentMarkerIcons[markerIconKey]
+                : null;
 
               if (!mapIcon) {
                 let svgString = `<svg class="map-marker__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6" fill="currentColor" /></svg>`;

@@ -5,7 +5,11 @@ import { Building2, TrafficCone, TreePine, Zap, Layers } from "lucide-react";
 import IncidentPopupContent from "../components/IncidentPopupContent";
 import ReportDetailQLKV from "../components/ReportDetail-QLKV";
 import MapView from "../components/Map/MapView";
-import { incidentMarkerIcons, createCustomMarkerIcon } from "../lib/mapIcons";
+import {
+  incidentMarkerIcons,
+  createCustomMarkerIcon,
+  resolveIncidentMarkerIconKey,
+} from "../lib/mapIcons";
 import { reportApi } from "../services/api/reportApi";
 import incidentApi from "../services/api/incidentApi";
 import { INCIDENT_ICON_MAP } from "../components/IncidentTypePopup";
@@ -13,8 +17,9 @@ import { renderToString } from "react-dom/server";
 import "../styles/map.css";
 
 const DANANG_CENTER = [16.0471, 108.2068];
-const ADMIN_REPORTS_CACHE_KEY = "admin-map-reports-cache-v1";
-const ADMIN_GEOCODE_CACHE_KEY = "admin-map-geocode-cache-v1";
+const ADMIN_REPORTS_CACHE_KEY = "admin-map-reports-cache-v2";
+const ADMIN_GEOCODE_CACHE_KEY = "admin-map-geocode-cache-v2";
+
 
 const normalizeTypeKey = (value = "") =>
   String(value)
@@ -403,16 +408,14 @@ export default function AdminDashboard() {
               normalizeTypeKey(t.name) === normalizeTypeKey(point.category),
           );
           
-          const getIconKey = (cat) => {
-            const normalized = normalizeTypeKey(cat);
-            if (normalized.includes("giao thong")) return "traffic";
-            if (normalized.includes("dien")) return "electric";
-            if (normalized.includes("cay xanh")) return "tree";
-            if (normalized.includes("cong trinh")) return "building";
-            return cat;
-          };
+          const markerIconKey = resolveIncidentMarkerIconKey({
+            typeName: point.category,
+            iconKey: typeObj?.iconKey,
+          });
 
-          let mapIcon = incidentMarkerIcons[getIconKey(point.category)];
+          let mapIcon = markerIconKey
+            ? incidentMarkerIcons[markerIconKey]
+            : null;
 
           if (!mapIcon) {
             let svgString = `<svg class="map-marker__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6" fill="currentColor" /></svg>`;
